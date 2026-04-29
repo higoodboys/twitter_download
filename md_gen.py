@@ -34,7 +34,7 @@ class md_gen():
         fixed_timestr = csv_info[0] if type(csv_info[0]) == str else self.stamp2time(csv_info[0])
         currentDate = fixed_timestr[0:7]
         
-        tweet_status_id = re.findall("status/(\d+)", csv_info[3])[0]
+        tweet_status_id = re.findall(r"status/(\d+)", csv_info[3])[0]
         # print(tweet_status_id)
 
         if self.current_tweet_info[0] != tweet_status_id: # 检测到现在正准备输出新的推文
