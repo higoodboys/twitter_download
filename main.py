@@ -14,6 +14,7 @@ from md_gen import md_gen
 from cache_gen import cache_gen
 from sync_state import SyncState
 from twitter_info_db import save_user_info_to_db, DEFAULT_DB_CONFIG
+from paths import resolve_save_path
 from url_utils import quote_url
 
 def del_special_char(string):
@@ -66,9 +67,7 @@ First_Page = True       #首页提取内容时特殊处理
 
 with open('settings.json', 'r', encoding='utf8') as f:
     settings = json.load(f)
-    if not settings['save_path']:
-        settings['save_path'] = os.getcwd()
-    settings['save_path'] += os.sep
+    settings['save_path'] = resolve_save_path(settings.get('save_path', ''))
     if settings['has_retweet']:
         has_retweet = True
     if settings['high_lights']:

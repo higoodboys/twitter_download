@@ -2,6 +2,13 @@
 
 import pymysql
 
+
+def mysql_utf8_safe(s):
+    """MySQL utf8 不支持 4 字节字符（emoji 等），写入前过滤。"""
+    if not s:
+        return ""
+    return "".join(c for c in str(s) if ord(c) <= 0xFFFF)
+
 DEFAULT_DB_CONFIG = {
     'host': '192.168.2.181',
     'user': 'root',
@@ -20,6 +27,7 @@ def save_user_info_to_db(name: str, nickname: str, db_config=None) -> bool:
     if not name or not nickname:
         return False
 
+    nickname = mysql_utf8_safe(nickname)
     cfg = {**DEFAULT_DB_CONFIG, **(db_config or {})}
     db = None
     cursor = None

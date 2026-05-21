@@ -1,6 +1,6 @@
 # coding=utf-8
 """
-将 twitter_download 目录下各用户 CSV 及媒体文件，
+将 twitterData/（或 settings.save_path）下各用户 CSV 及媒体文件，
 按 twitter/twitter.py 的目录结构、HTML 格式写入 twitter/ 目录，并同步到数据库。
 """
 
@@ -25,6 +25,8 @@ DB_NAME = "p91"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TWITTER_DIR = os.path.join(SCRIPT_DIR, "twitter")
 SETTINGS_PATH = os.path.join(SCRIPT_DIR, "settings.json")
+
+from paths import load_save_path_from_settings
 IMPORT_CONFIG_PATH = os.path.join(SCRIPT_DIR, "csv_import.json")
 
 CSV_HEADER = [
@@ -311,8 +313,10 @@ def mark_csv_parsed(import_cfg, parsed_keys):
         parsed_csv[key] = {"parsed_at": now, "mtime": mtime}
 
 
-def process_user(screen_name, import_cfg, db_enabled=True):
-    user_dir = os.path.join(SCRIPT_DIR, screen_name)
+def process_user(screen_name, import_cfg, db_enabled=True, data_root=None):
+    if data_root is None:
+        data_root = load_save_path_from_settings().rstrip(os.sep)
+    user_dir = os.path.join(data_root, screen_name)
     if not os.path.isdir(user_dir):
         print("跳过 %s: 目录不存在" % screen_name)
         return 0, 0, 0, 0, 0, db_enabled
@@ -385,7 +389,9 @@ def main():
     os.chdir(SCRIPT_DIR)
     import_cfg = load_import_config()
     users = load_user_list()
+    data_root = load_save_path_from_settings().rstrip(os.sep)
     print("用户列表: %s" % ", ".join(users))
+    print("数据源目录: %s" % data_root)
     print("目标目录: %s" % TWITTER_DIR)
     print("数据库: %s" % DB_HOST)
     print("导入配置: %s" % IMPORT_CONFIG_PATH)
@@ -399,7 +405,7 @@ def main():
     db_ok = True
     for user in users:
         print("\n========== 处理用户: %s ==========" % user)
-        h, ins, ext, fail, skip, db_ok = process_user(user, import_cfg, db_ok)
+        h, ins, ext, fail, skip, db_ok = process_user(user, import_cfg, db_ok, data_root)
         total_html += h
         total_db_insert += ins
         total_db_exist += ext

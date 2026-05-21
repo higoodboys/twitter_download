@@ -9,6 +9,7 @@ import json
 import hashlib
 from datetime import datetime
 from urllib.parse import quote
+from paths import load_save_path_from_settings
 from url_utils import quote_url
 from transaction_generate import get_url_path
 from transaction_generate import get_transaction_id
@@ -146,9 +147,9 @@ class csv_gen():
 class tag_down():
     def __init__(self):
         if tag:
-            self.folder_path = os.getcwd() + os.sep + del_special_char(tag) + os.sep
+            self.folder_path = load_save_path_from_settings() + del_special_char(tag) + os.sep
         else:
-            self.folder_path = os.getcwd() + os.sep + del_special_char(_filter) + os.sep
+            self.folder_path = load_save_path_from_settings() + del_special_char(_filter) + os.sep
 
         if not os.path.exists(self.folder_path):   #创建文件夹
             os.makedirs(self.folder_path)

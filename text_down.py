@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 
 from user_info import User_info
+from paths import load_save_path_from_settings
 from url_utils import quote_url
 
 
@@ -125,7 +126,7 @@ class text_down():
 
         self._headers['referer'] = 'https://twitter.com/' + self._user_info.screen_name
 
-        self.folder_path = os.getcwd() + os.sep + screen_name + os.sep
+        self.folder_path = load_save_path_from_settings() + screen_name + os.sep
 
         if not os.path.exists(self.folder_path):   #创建文件夹
             os.makedirs(self.folder_path)

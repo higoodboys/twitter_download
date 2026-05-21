@@ -14,6 +14,7 @@ from tag_down import hash_save_token
 from tag_down import stamp2time
 from transaction_generate import get_transaction_id
 from transaction_generate import get_url_path
+from paths import load_save_path_from_settings
 
 ##########配置区域##########
 
@@ -126,7 +127,7 @@ search_advanced = ''
 class Reply_down():
     def __init__(self, _target):
         self.target = _target
-        self.folder_path = os.getcwd() + os.sep
+        self.folder_path = load_save_path_from_settings()
 
         self._headers = {
             'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
@@ -141,14 +142,14 @@ class Reply_down():
         self.ct = get_transaction_id()
 
         if self.get_querystring():  #指定用户
-            self.folder_path = os.getcwd() + os.sep + del_special_char(self.user_name) + os.sep
+            self.folder_path = load_save_path_from_settings() + del_special_char(self.user_name) + os.sep
             if not os.path.exists(self.folder_path):   #创建文件夹
                 os.makedirs(self.folder_path)
             self.csv = csv_gen(self.folder_path)
             self.get_result()
 
         else:   #指定推文
-            self.folder_path = os.getcwd() + os.sep + del_special_char(self.tweet_id) + os.sep
+            self.folder_path = load_save_path_from_settings() + del_special_char(self.tweet_id) + os.sep
             if not os.path.exists(self.folder_path):   #创建文件夹
                 os.makedirs(self.folder_path)
             self.csv = csv_gen(self.folder_path)
