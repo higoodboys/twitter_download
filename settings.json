@@ -32,6 +32,16 @@
     "autoSync": false,
     "autoSync_info": "开启后将基于本地已有的内容自动同步最新的部分, 本质上是自动调整时间范围的左半部分, 右半建议2030-01-01或更长",
 
+    "ignore_count_sync": false,
+    "ignore_count_sync_info": "为 true 时忽略 media_count/statuses_count 比对，每次都拉取时间线；为 false 时仅当二者任一比上次记录增加才继续请求，减少则只更新 sync_state.json 不拉时间线，相等则跳过",
+
+    "db_sync": true,
+    "db_sync_info": "每次 get_other_info 后将 screen_name 与昵称写入 MySQL twitterInfo 表（不存在则插入，昵称变化则更新）",
+    "db_host": "192.168.2.181",
+    "db_user": "root",
+    "db_password": "liuwei22",
+    "db_name": "p91",
+
     "image_format": "orig",
     "image_format_info": "可选项: orig, jpg, png; orig-(自适应原图_以推特服务器为准_大部分为jpg_少部分png), jpg-(全部以jpg格式保存), png-(全部以png格式保存_文件较大)",
 

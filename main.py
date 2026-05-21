@@ -12,6 +12,8 @@ from user_info import User_info
 from csv_gen import csv_gen
 from md_gen import md_gen
 from cache_gen import cache_gen
+from sync_state import SyncState
+from twitter_info_db import save_user_info_to_db, DEFAULT_DB_CONFIG
 from url_utils import quote_url
 
 def del_special_char(string):
@@ -49,6 +51,9 @@ csv_file = None
 cache_data = None
 down_log = False
 autoSync = False
+ignore_count_sync = False
+db_sync = False
+db_config = None
 
 md_file = None
 md_output = True
@@ -77,6 +82,17 @@ with open('settings.json', 'r', encoding='utf8') as f:
         autoSync = True
     if settings['down_log']:
         down_log = True
+    if settings.get('ignore_count_sync'):
+        ignore_count_sync = True
+    if settings.get('db_sync', True):
+        db_sync = True
+        db_config = {
+            'host': settings.get('db_host', DEFAULT_DB_CONFIG['host']),
+            'user': settings.get('db_user', DEFAULT_DB_CONFIG['user']),
+            'password': settings.get('db_password', DEFAULT_DB_CONFIG['password']),
+            'database': settings.get('db_name', DEFAULT_DB_CONFIG['database']),
+            'charset': 'utf8',
+        }
     if settings['likes']:   #likes的逻辑和retweet大致相同
         has_retweet = True
         has_likes = True
@@ -394,6 +410,8 @@ def main(_user_info: object):
     _headers['referer'] = 'https://twitter.com/' + _user_info.screen_name
     if not get_other_info(_user_info):
         return False
+    if db_sync:
+        save_user_info_to_db(_user_info.screen_name, _user_info.name, db_config)
     print_info(_user_info)
     _path = settings['save_path'] + _user_info.screen_name
     if not os.path.exists(_path):   #创建文件夹
@@ -401,6 +419,27 @@ def main(_user_info: object):
         _user_info.save_path = settings['save_path']+_user_info.screen_name
     else:
         _user_info.save_path = _path
+
+    sync_state = SyncState(settings['save_path'])
+    should_fetch, skip_reason = sync_state.should_fetch(
+        _user_info.screen_name,
+        _user_info.media_count,
+        _user_info.statuses_count,
+        ignore_count_sync,
+    )
+    prev = sync_state.get(_user_info.screen_name)
+    if prev:
+        print(
+            f'计数同步: 上次 media={prev.get("media_count")} statuses={prev.get("statuses_count")} '
+            f'→ 当前 media={_user_info.media_count} statuses={_user_info.statuses_count}'
+        )
+    if not should_fetch:
+        if skip_reason == 'decreased':
+            sync_state.update(_user_info.screen_name, _user_info.media_count, _user_info.statuses_count)
+            print(f'{_user_info.name}: 推数/媒体数已减少，已更新本地记录，跳过时间线请求。\n')
+        else:
+            print(f'{_user_info.name}: 推数/媒体数未增加，跳过时间线请求。\n')
+        return True
 
     global csv_file
     csv_file = csv_gen(_user_info.save_path, _user_info.name, _user_info.screen_name, settings['time_range'])
@@ -439,6 +478,8 @@ def main(_user_info: object):
 
     if down_log:
         del cache_data
+
+    sync_state.update(_user_info.screen_name, _user_info.media_count, _user_info.statuses_count)
     print(f'{_user_info.name}下载完成\n\n')
 
 if __name__=='__main__':

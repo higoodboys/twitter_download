@@ -13,5 +13,6 @@ __pycache__/*.pyc
 *.gif
 *.csv
 *.log
+sync_state.json
 twitter
 csv_import.json
