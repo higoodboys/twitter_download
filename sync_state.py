@@ -23,10 +23,13 @@ class SyncState:
     def should_fetch(self, screen_name: str, media_count: int, statuses_count: int, ignore_check: bool):
         """
         返回 (是否拉取时间线, 原因)。
-        原因: ignore_check | first_run | increased | unchanged | decreased
+        原因: ignore_check | first_run | increased | unchanged | decreased | no_media
         """
         if ignore_check:
             return True, 'ignore_count_sync'
+
+        if media_count == 0:
+            return False, 'no_media'
 
         prev = self.data.get(screen_name)
         if prev is None:

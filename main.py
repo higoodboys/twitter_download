@@ -412,14 +412,19 @@ def main(_user_info: object):
     if db_sync:
         save_user_info_to_db(_user_info.screen_name, _user_info.name, db_config)
     print_info(_user_info)
+
+    sync_state = SyncState(settings['save_path'])
+    if not has_likes and not has_highlights and (_user_info.media_count or 0) == 0:
+        sync_state.update(_user_info.screen_name, _user_info.media_count, _user_info.statuses_count)
+        print(f'{_user_info.name}: 含媒体推数为 0，跳过时间线请求。\n')
+        return True
+
     _path = settings['save_path'] + _user_info.screen_name
     if not os.path.exists(_path):   #创建文件夹
         os.makedirs(settings['save_path']+_user_info.screen_name)       #用户名建文件夹
         _user_info.save_path = settings['save_path']+_user_info.screen_name
     else:
         _user_info.save_path = _path
-
-    sync_state = SyncState(settings['save_path'])
     should_fetch, skip_reason = sync_state.should_fetch(
         _user_info.screen_name,
         _user_info.media_count,
@@ -436,6 +441,9 @@ def main(_user_info: object):
         if skip_reason == 'decreased':
             sync_state.update(_user_info.screen_name, _user_info.media_count, _user_info.statuses_count)
             print(f'{_user_info.name}: 推数/媒体数已减少，已更新本地记录，跳过时间线请求。\n')
+        elif skip_reason == 'no_media':
+            sync_state.update(_user_info.screen_name, _user_info.media_count, _user_info.statuses_count)
+            print(f'{_user_info.name}: 含媒体推数为 0，跳过时间线请求。\n')
         else:
             print(f'{_user_info.name}: 推数/媒体数未增加，跳过时间线请求。\n')
         return True
