@@ -2,10 +2,10 @@
     "save_path": "",
     "save_path_info": "就算是windows路径也请用 '/' ,而不是反斜杠(可以留空)",
 
-    "user_lst": "lilmonix3,matchach",
+    "user_lst": "chenxiya8023,SDNMQ5,sarah_port81883,Shayu95428010",
     "user_lst_info": "填入要下载的用户名(@后面的字符),支持多用户下载,用户名字间逗号(英文逗号,不要有空格)隔开",
 
-    "cookie": "auth_token=xxxxxxxxxxx; ct0=xxxxxxxxxxx;",
+    "cookie": "auth_token=49cc18a290fd61386551e2ee08a7c777f338d37c; ct0=4babac76c12b557ba0dee648c765878a1fecb222f6fbadf75fb5515eb6332f22989c54666eba05b49acf2668ddd4fa97462aa303886731ae07d396a35ec1f75f924748343bfdb68e5f37c724ac683fd4;",
     "cookie_info": "填入 cookie (auth_token与ct0字段) //重要:替换掉其中的x即可, 注意不要删掉分号",
 
 
@@ -26,7 +26,7 @@
     "time_range": "1990-01-01:2030-01-01",
     "time_range_info": "时间范围限制,格式如 1990-01-01:2030-01-01 ,不填默认无限制",
 
-    "down_log": false,
+    "down_log": true,
     "down_log_info": "开启后将记录已下载的内容,避免重复下载浪费带宽; 注意:如需重新下载已下载内容,需要关闭此选项或删除目录下的 cache_data.log 文件",
 
     "autoSync": false,
@@ -41,10 +41,10 @@
     "log_output": false,
     "log_output_info": "是否需要下载过程日志输出",
 
-    "max_concurrent_requests": 8,
+    "max_concurrent_requests": 4,
     "max_concurrent_requests_info": "最大并发数量, 默认为8, 对网络有自信的可以调高; 遇到多次下载失败时适当降低",
 
-    "proxy": "",
+    "proxy": "http://192.168.2.100:1080",
     "proxy_info": "手动配置代理,默认为空,非必要无需填写 格式: http://localhost:port ",
     
     "md_output": false,

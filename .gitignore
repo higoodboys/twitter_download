@@ -1,0 +1,17 @@
+__pycache__/*.pyc
+*.jpg
+*.mp4
+*.png
+*.gif
+*.webp
+*.jpeg
+*.bmp
+*.tiff
+*.ico
+*.svg
+*.webp
+*.gif
+*.csv
+*.log
+twitter
+csv_import.json
