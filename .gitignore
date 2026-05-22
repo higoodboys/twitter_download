@@ -14,6 +14,7 @@ __pycache__/*.pyc
 *.csv
 *.log
 sync_state.json
+twitter/sync_priority.json
 twitterData/
 twitter
 csv_import.json

@@ -43,6 +43,22 @@ def load_user_list():
     return [u.strip() for u in raw.split(",") if u.strip()]
 
 
+def apply_db_config_from_settings(settings=None):
+    """从 settings.json 覆盖数据库连接参数。"""
+    global DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+    if settings is None:
+        with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+    if settings.get("db_host"):
+        DB_HOST = settings["db_host"]
+    if settings.get("db_user"):
+        DB_USER = settings["db_user"]
+    if settings.get("db_password"):
+        DB_PASSWORD = settings["db_password"]
+    if settings.get("db_name"):
+        DB_NAME = settings["db_name"]
+
+
 def load_import_config():
     if os.path.isfile(IMPORT_CONFIG_PATH):
         with open(IMPORT_CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -81,24 +97,46 @@ def _has_chinese(s):
     return bool(re.search(r"[\u4e00-\u9fff\u3400-\u4dbf]", s))
 
 
+def _strip_trailing_hashtags(text):
+    """去掉末尾 #标签（可多个，如 #foo #bar）。"""
+    if not text:
+        return text
+    prev = None
+    while prev != text:
+        prev = text
+        text = re.sub(r"(?:\s+#[^\s#]+)+\s*$", "", text)
+    return text.strip()
+
+
 def extract_title(content, max_len=50):
-    """去除首尾英文、空白、换行、链接，保留中间中文描述。"""
+    """有中文时保留中文并去掉首尾杂项；全英文时保留英文正文。均去除链接与末尾#标签。"""
     if not content:
         return ""
     text = re.sub(r"https?://\S+", "", content)
     text = re.sub(r"[\r\n\t]+", " ", text)
-    lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
-    parts = []
-    for ln in lines:
+    lines = []
+    for ln in text.split("\n"):
         ln = re.sub(r"https?://\S+", "", ln).strip()
-        if _has_chinese(ln):
-            parts.append(ln)
-    text = " ".join(parts) if parts else text.strip()
-    # 去掉首尾 ASCII（\w 会匹配中文，故仅用 a-zA-Z0-9_）
-    _edge = r"[\sA-Za-z0-9_.,!?;:\-@#_/\\()+'\"`~\[\]{}|]+"
-    text = re.sub("^" + _edge, "", text)
-    text = re.sub(_edge + "$", "", text)
-    text = text.strip()
+        if ln:
+            lines.append(ln)
+
+    chinese_parts = [ln for ln in lines if _has_chinese(ln)]
+    if chinese_parts:
+        text = " ".join(chinese_parts)
+        text = _strip_trailing_hashtags(text)
+        # 去掉首尾 ASCII 杂项（\w 会匹配中文，故仅用 a-zA-Z0-9_）
+        _edge = r"[\sA-Za-z0-9_.,!?;:\-@#_/\\()+'\"`~\[\]{}|]+"
+        text = re.sub("^" + _edge, "", text)
+        text = re.sub(_edge + "$", "", text)
+        text = _strip_trailing_hashtags(text)
+    else:
+        # 全英文（或无中文）：保留正文，不做首尾英文裁剪
+        text = " ".join(lines) if lines else text.strip()
+        text = _strip_trailing_hashtags(text)
+        text = re.sub(r"\s+", " ", text).strip()
+        if re.fullmatch(r"(?:#\S+\s*)+", text or ""):
+            text = ""
+
     return text[:max_len] if text else ""
 
 
@@ -226,6 +264,30 @@ def build_html(title, content, media_list):
     html += img_str2
     html += "</body></html>"
     return html
+
+
+def tid_exists_in_db(tid):
+    """推文 tid 是否已在 list 表（bbs=5）。"""
+    try:
+        db = pymysql.connect(
+            host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+            database=DB_NAME, charset="utf8",
+        )
+    except Exception:
+        return False
+    cursor = db.cursor()
+    try:
+        cursor.execute("SET NAMES utf8")
+        cursor.execute(
+            "SELECT 1 FROM list WHERE tid = '%s' AND bbs=%d LIMIT 1"
+            % (sql_escape(tid), BBS)
+        )
+        return cursor.fetchone() is not None
+    except Exception:
+        return False
+    finally:
+        cursor.close()
+        db.close()
 
 
 def save_to_db(tid, thread_title, user_name, pic_num, res_type, resource, tweet_date):
@@ -387,6 +449,7 @@ def process_user(screen_name, import_cfg, db_enabled=True, data_root=None):
 
 def main():
     os.chdir(SCRIPT_DIR)
+    apply_db_config_from_settings()
     import_cfg = load_import_config()
     users = load_user_list()
     data_root = load_save_path_from_settings().rstrip(os.sep)
