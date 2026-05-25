@@ -52,6 +52,12 @@
     "graphql_min_interval_sec_info": "main_sync 两次 GraphQL API 请求的最小间隔(秒)，仅限速 API 不限媒体下载；填 0 关闭",
     "graphql_pause_after_user_sec": 3,
     "graphql_pause_after_user_sec_info": "main_sync 每处理完一个用户(含发布)后的额外暂停(秒)；填 0 关闭",
+    "graphql_connect_timeout_sec": 15,
+    "graphql_read_timeout_sec": 90,
+    "graphql_timeout_info": "main_sync GraphQL 请求超时(连接,读取秒)；UserMedia 等大响应建议读超时≥60",
+
+    "rate_limit_cooldown_sec": 120,
+    "rate_limit_cooldown_sec_info": "main_sync 检测到 Rate limit exceeded 后，等待该秒数再试下一用户；填 0 则立即继续（易连续触发限流）",
 
     "media_connect_timeout_sec": 3.05,
     "media_read_timeout_sec": 16,
@@ -59,7 +65,7 @@
     "media_max_retries": 50,
     "media_retry_delay_sec": 2,
     "media_retry_info": "main_sync 下载失败后的重试间隔(秒)，main.py 为立即重试；填 0 则与 main.py 一致",
-    "proxy": "http://192.168.2.100:1080",
+    "proxy": "socks5://127.0.0.1:1080",
     "proxy_info": "手动配置代理,默认为空,非必要无需填写 格式: http://localhost:port ",
     "md_output": false,
     "md_output_info": "开启后输出 Markdown 文件以记录获取到的推文 (不影响csv生成)",

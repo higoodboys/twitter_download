@@ -184,9 +184,18 @@ def _mark_rate_limit_text(text):
     return False
 
 
+def _graphql_timeout():
+    s = m.settings
+    connect = float(s.get("graphql_connect_timeout_sec", 15))
+    read = float(s.get("graphql_read_timeout_sec", 90))
+    return (connect, read)
+
+
 def _tracking_httpx_get(*args, **kwargs):
     url = args[0] if args else kwargs.get("url", "")
     wait_before_graphql(url)
+    if kwargs.get("timeout") is None:
+        kwargs["timeout"] = _graphql_timeout()
     resp = _orig_httpx_get(*args, **kwargs)
     _mark_rate_limit_text(getattr(resp, "text", "") or "")
     return resp
@@ -212,7 +221,9 @@ def get_other_info_checked(user_info):
     )
     try:
         m.request_count += 1
-        response = _tracking_httpx_get(quote_url(url), headers=m._headers, proxy=m.proxies).text
+        response = _tracking_httpx_get(
+            quote_url(url), headers=m._headers, proxy=m.proxies, timeout=_graphql_timeout()
+        ).text
         if _mark_rate_limit_text(response):
             print("获取信息失败: Rate limit exceeded")
             return False
@@ -385,6 +396,30 @@ def _retry_sleep_seconds(retries):
     return min(base * retries, 30)
 
 
+def _rate_limit_cooldown_sec():
+    return float(m.settings.get("rate_limit_cooldown_sec", 120) or 0)
+
+
+def _sleep_interruptible(session, seconds, reason=""):
+    """可响应 Ctrl+C 的等待；返回 False 表示被用户中断。"""
+    if seconds <= 0:
+        return True
+    if reason:
+        print(reason, flush=True)
+    deadline = time.time() + seconds
+    last_left = -1
+    while time.time() < deadline:
+        if session.shutdown_requested:
+            print("\n等待期间收到停止请求，结束等待。", flush=True)
+            return False
+        left = int(deadline - time.time())
+        if left != last_left and left > 0 and left % 30 == 0:
+            print("  … 剩余约 %d 秒" % left, flush=True)
+            last_left = left
+        time.sleep(min(1.0, max(0, deadline - time.time())))
+    return True
+
+
 def sync_download_control(user_info, meta_dir, db_ok, single_page_only=False):
     """下载到 twitter/{user}/{tid}/，每完成一条媒体即尝试 HTML+入库。"""
     stats = {
@@ -495,8 +530,12 @@ def sync_download_control(user_info, meta_dir, db_ok, single_page_only=False):
                         url = url.replace("name=orig", "name=4096x4096")
 
         while True:
-            photo_lst = m.get_download_url(user_info)
-            if not photo_lst:
+            try:
+                photo_lst = m.get_download_url(user_info)
+            except Exception as e:
+                print("获取时间线异常: %s" % e)
+                break
+            if photo_lst is False or not photo_lst:
                 break
             if photo_lst[0] is True:
                 continue
@@ -600,18 +639,22 @@ def download_user(user_info, db_ok=True):
             )
 
         cache_writer = cache_gen(meta_dir) if m.down_log else None
+        try:
+            if m.autoSync:
+                _auto_sync_from_twitter_dirs(user_info, meta_dir)
 
-        if m.autoSync:
-            _auto_sync_from_twitter_dirs(user_info, meta_dir)
-
-        pub_stats = sync_download_control(
-            user_info, meta_dir, db_ok, single_page_only=single_page_only
-        )
-        if md_writer:
-            md_writer.md_close()
-        if cache_writer:
-            del cache_writer
-            cache_writer = None
+            pub_stats = sync_download_control(
+                user_info, meta_dir, db_ok, single_page_only=single_page_only
+            )
+        finally:
+            if md_writer:
+                md_writer.md_close()
+            if cache_writer:
+                try:
+                    cache_writer.save()
+                except Exception:
+                    pass
+                cache_writer = None
 
         if _api_rate_limited:
             mark_rate_limited(sn)
@@ -656,6 +699,9 @@ def run():
     print("根目录: %s" % TWITTER_ROOT)
     print("数据库: %s" % ctt.DB_HOST)
     print("节流: %s" % graphql_throttle_config_str())
+    cooldown = _rate_limit_cooldown_sec()
+    if cooldown > 0:
+        print("限流冷却: 触发后等待 %.0f 秒再试下一用户" % cooldown)
     print("=" * 50)
 
     t0 = time.time()
@@ -730,6 +776,20 @@ def run():
                 interrupted = True
                 print("\n当前用户 @%s 已处理完毕，按 Ctrl+C 要求停止后续任务。" % screen_name)
                 break
+
+            if status == "rate_limited":
+                cooldown = _rate_limit_cooldown_sec()
+                if cooldown > 0 and idx < total_users:
+                    ok = _sleep_interruptible(
+                        session,
+                        cooldown,
+                        "\nAPI 限流：暂停 %.0f 秒后再处理下一用户（剩余 %d/%d）…"
+                        % (cooldown, total_users - idx, total_users),
+                    )
+                    if not ok:
+                        interrupted = True
+                        break
+                continue
 
             graphql_pause_after_user()
 

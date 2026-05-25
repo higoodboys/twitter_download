@@ -12,9 +12,15 @@ class cache_gen():
         else:
             self.cache_data = set()
 
-    def __del__(self):
+    def save(self):
         with open(self.cache_path, 'wb') as f:
             pickle.dump(self.cache_data, f)
+
+    def __del__(self):
+        try:
+            self.save()
+        except Exception:
+            pass
 
     def add(self, element):
         self.cache_data.add(element)
